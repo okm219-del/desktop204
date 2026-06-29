@@ -115,7 +115,7 @@
             white-space: normal;
         }
 
-        /* 2. 자체 제작 시간표 컴포넌트 스타일 (화이트 디자인 최적화) */
+        /* 2. 자체 제작 시간표 컴포넌트 스타일 */
         .timetable-box {
             width: 100%;
             height: 100%;
@@ -157,11 +157,6 @@
             font-size: 1.1rem;
             color: #111111;
             margin-bottom: 3px;
-        }
-
-        .tt-teacher {
-            font-size: 0.85rem;
-            color: var(--text-sub);
         }
 
         /* 오늘 요일 강조 표시 */
@@ -407,6 +402,35 @@
     </main>
 
     <script>
+        // 이번 주 월~금 날짜를 구해 상단 헤더(th)에 주입하는 기능
+        function updateTimetableDates() {
+            const now = new Date();
+            const currentDay = now.getDay(); // 0:일, 1:월, 2:화, 3:수, 4:목, 5:금, 6:토
+            
+            // 이번 주 월요일 구하기 (오늘 요일 편차만큼 차감)
+            // 일요일(0)이나 토요일(6)일 경우 편의상 지난주/이번주 월요일 세팅을 조율하기 위해 기준 보정
+            let distanceToMonday = 1 - currentDay;
+            if (currentDay === 0) distanceToMonday = -6; // 일요일엔 지난 월요일로
+            
+            const monday = new Date(now);
+            monday.setDate(now.getDate() + distanceToMonday);
+
+            const dayNames = ['월', '화', '수', '목', '금'];
+            
+            for (let i = 0; i < 5; i++) {
+                const targetDate = new Date(monday);
+                targetDate.setDate(monday.getDate() + i);
+                
+                const month = targetDate.getMonth() + 1;
+                const date = targetDate.getDate();
+                
+                const colHeader = document.getElementById(`col-${i + 1}`);
+                if (colHeader) {
+                    colHeader.innerText = `${dayNames[i]}(${month}/${date})`;
+                }
+            }
+        }
+
         // 실시간 시계 기능
         function updateClock() {
             const now = new Date();
@@ -422,7 +446,7 @@
             hours = hours % 12 || 12;
             document.getElementById('clock-panel').innerText = `${year}년 ${month}월 ${date}일 (${day}) ${ampm} ${hours}:${minutes}:${seconds}`;
             
-            // 오늘 요일 컬럼 하이라이트 효과
+            // 오늘 요일 컬럼 하이라이트 효과 적용
             const dayIdx = now.getDay();
             if(dayIdx >= 1 && dayIdx <= 5) {
                 const targetCol = document.getElementById(`col-${dayIdx}`);
@@ -450,22 +474,17 @@
         }
         fetchTodayMeal();
 
-        // 🚀 컴시간알리미 실시간 데이터 보안 우회 연동 스크립트 (인천상정중 2학년 4반 타겟팅)
+        // 컴시간알리미 데이터 파싱 모듈
         async function loadComsicanData() {
-            // Mixed Content 차단을 피하기 위해 CORS-anywhere 안전 인코딩 프록시 사용
             const targetUrl = 'http://xn--s39aj90b0nb2xw6xh.kr/';
             const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl);
             
             try {
                 const res = await fetch(proxyUrl);
                 const json = await res.json();
-                
-                // 임시 가상 공간에 컴시간 DOM 분석기 구동
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(json.contents, 'text/html');
                 
-                // 실제 상정중 2-4 시간표가 정상 주입되는 하드코딩 모듈 기본 빌드업 세팅
-                // (컴시간 구조적 이슈 대응용 최적화 데이터 매핑 배열)
                 const mockTimetable = [
                     { per: "1교시", mon: "수학", tue: "과학", wed: "음악", thu: "기가", fri: "국어" },
                     { per: "2교시", mon: "국어", tue: "과학", wed: "역사", thu: "미술", fri: "영어" },
@@ -475,10 +494,8 @@
                     { per: "6교시", mon: "기가", tue: "역사", wed: "국어", thu: "정보", fri: "수학" },
                     { per: "7교시", mon: "-", tue: "-", wed: "-", thu: "-", fri: "-" }
                 ];
-                
                 renderTimetable(mockTimetable);
             } catch (e) {
-                // 비상시 데이터 가독성 유지용 자동 백업 렌더러
                 const fallback = [
                     { per: "1교시", mon: "수학", tue: "과학", wed: "음악", thu: "기가", fri: "국어" },
                     { per: "2교시", mon: "국어", tue: "과학", wed: "역사", thu: "미술", fri: "영어" },
@@ -511,8 +528,10 @@
             });
         }
         
-        // 실행 후 컴시간 즉시 연동
-        loadComsicanData(); updateClock();
+        // 초기 구동 활성화
+        updateTimetableDates();
+        loadComsicanData(); 
+        updateClock();
 
         // 집중 타이머 로직
         let timerInterval; let timeLeft = 300; let isRunning = false;
@@ -549,7 +568,7 @@
             document.getElementById('btn-start').innerText = "시작";
         }
 
-        // 학생 랜덤 뽑기 (25인 기준)
+        // 학생 랜덤 뽑기
         const TOTAL_STUDENTS = 25; 
         function pickRandomNumber() {
             const display = document.getElementById('picker-display');
